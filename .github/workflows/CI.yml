@@ -1,0 +1,40 @@
+name: CI
+on: [ push, pull_request ]
+jobs:
+  Build:
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java-version: [ 17 ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ matrix.java-version }}
+        cache: 'maven'
+
+    - name: Build Maven Artifacts
+      run: mvn verify -PcheckFormat
+
+    - name: Lint Job Worker Runtime Dockerfile
+      uses: hadolint/hadolint-action@v2.1.0
+      with:
+        dockerfile: ./runtime/Dockerfile
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Job Worker Runtime Docker Image
+      uses: docker/build-push-action@v3
+      with:
+        context: runtime/
+        push: false
+        tags: camunda/connectors:local
